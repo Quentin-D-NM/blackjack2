@@ -22,9 +22,15 @@ android {
         }
     }
     packagingOptions {
-        exclude 'META-INF/progaurd/androidx-annotations.pro'
+        exclude 'META-INF/proguard/androidx-annotations.pro'
+    }
+    compileOptions {
+        sourceCompatibility = '1.8'
+        targetCompatibility = '1.8'
     }
 }
+
+
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
