@@ -23,6 +23,10 @@ import java.util.Date;
 @TypeConverters(BlackjackDatabase.Converters.class)
 public abstract class BlackjackDatabase extends RoomDatabase {
 
+   BlackjackDatabase() {
+
+  }
+
   private static Application applicationContext;
 
   public abstract ShoeDao getShoeDao();
