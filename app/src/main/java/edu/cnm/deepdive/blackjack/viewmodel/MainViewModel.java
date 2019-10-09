@@ -1,12 +1,12 @@
 package edu.cnm.deepdive.blackjack.viewmodel;
 
 import android.app.Application;
-import android.widget.ListView;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
+import edu.cnm.deepdive.blackjack.model.dao.CardDao;
 import edu.cnm.deepdive.blackjack.model.entity.Card;
 import edu.cnm.deepdive.blackjack.model.entity.Card.Rank;
 import edu.cnm.deepdive.blackjack.model.entity.Card.Suit;
@@ -26,8 +26,9 @@ public class MainViewModel extends AndroidViewModel {
 
 
   private final BlackjackDatabase database;
-  private MutableLiveData<Shoe> shoe;
   private long shoeId;
+  private long markerId;
+  private boolean shuffleNeeded;
   private Random rng;
   private MutableLiveData<Long> roundId;
   private LiveData<RoundWithDetails> round;
@@ -83,17 +84,18 @@ public class MainViewModel extends AndroidViewModel {
     int startIndex = cards.size() * 2 / 3;
     int endIndex = cards.size() * 3 / 4;
     int markerPosition = startIndex + rng.nextInt(endIndex - startIndex);
-    Card marker = cards.get(markerPosition);
-    shoe.setMarkerId(marker.getId());
+    List<Long> cardIds = database.getCardDao().insert(cards);
+    markerId = cardIds.get(markerPosition);
+    shoe.setMarkerId(markerId);
     database.getShoeDao().update(shoe);
-    database.getCardDao().insert(cards);
+    shuffleNeeded = false;
   }
 
   public void startRound() {
     new Thread(() ->
     {
       Round round = new Round();
-      if (shoeId == 0) { //TODO Add check of shuffle needed.
+      if (shoeId == 0 || shuffleNeeded) {
         createShoe();
       }
       round.setShoeId(shoeId);
@@ -106,15 +108,33 @@ public class MainViewModel extends AndroidViewModel {
       long[] handIds = database.getHandDao().insert(dealer, player);
       for (long handId : handIds) {
         for (int i = 0; i < 2; i++) {
-          Card card = database.getCardDao().getTopCardInShoe(shoeId);
-          card.setShoeId(null);
-          card.setHandId(handId);
-          database.getCardDao().update(card);
+          Card card = getTopCard(handId);
         }
       }
       this.roundId.postValue(roundId);
       this.dealerHandId.postValue(handIds[0]);
       this.playerHandId.postValue(handIds[1]);
     }).start();
+  }
+
+  public void hitPlayer() {
+    new Thread(() -> {
+      CardDao dao = database.getCardDao();
+      Long handId = playerHandId.getValue();
+      Card card = getTopCard(handId);
+      playerHandId.postValue(handId);
+    }).start();
+  }
+
+  private Card getTopCard(long handId) {
+    CardDao cardDao = database.getCardDao();
+    Card card = cardDao.getTopCardInShoe(shoeId);
+    card.setShoeId(null);
+    card.setHandId(handId);
+    cardDao.update(card);
+    if (card.getId() == markerId) {
+      shuffleNeeded = true;
+    }
+    return card;
   }
 }
