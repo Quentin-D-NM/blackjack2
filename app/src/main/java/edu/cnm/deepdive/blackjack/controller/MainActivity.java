@@ -18,5 +18,6 @@ public class MainActivity extends AppCompatActivity {
     });
     Button addDeck = findViewById(R.id.start_round);
     addDeck.setOnClickListener(v -> viewModel.startRound());
+    viewModel.startRound();
   }
 }
